@@ -34,3 +34,32 @@ Package as ZIP
 Upload to:
 
     addons.mozilla.org
+
+
+Addition update
+
+1.  “Quick Actions” After Answer
+
+After showing a response, let users:
+
+    Copy answer 📋
+
+    Share to email / notes
+
+    Open full answer in a tab
+
+    “Explain more” (follow-up)
+
+
+2. Instant Page Summary Shortcut
+
+🧠 Press shortcut → "Summarize this page"
+
+    Uses document.body.innerText → sends to Gemini
+
+    AI returns summary right on the page
+
+    Perfect for long articles, blog posts, Reddit, etc.
+
+
+3. Modes how long the ai will answer

@@ -46,3 +46,36 @@
 #search-up-answer:empty {
   display: none;
 }
+
+#search-up-actions {
+  margin-top: 8px;
+  display: none;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+#search-up-actions.show {
+  display: flex;
+}
+
+.search-up-action-btn {
+  background-color: #444;
+  border: 1px solid #666;
+  color: white;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.search-up-action-btn:hover {
+  background-color: #555;
+}
+
+.search-up-action-btn:active {
+  background-color: #333;
+}
