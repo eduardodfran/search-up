@@ -1,6 +1,12 @@
 const searchUpBar = document.createElement('div')
 searchUpBar.id = 'search-up-bar'
 searchUpBar.innerHTML = `
+  <div id="search-up-mode-selector">
+    <button class="search-up-mode-btn active" data-mode="brief">Brief</button>
+    <button class="search-up-mode-btn" data-mode="detailed">Detailed</button>
+    <button class="search-up-mode-btn" data-mode="comprehensive">Full</button>
+  </div>
+  <div class="search-up-mode-indicator">Mode: Brief (1-2 sentences)</div>
   <input type="text" id="search-up-input" placeholder="Search...">
   <div id="search-up-answer"></div>
   <div id="search-up-actions">
@@ -18,6 +24,36 @@ const searchUpActions = document.getElementById('search-up-actions')
 
 let currentAnswer = ''
 let currentQuery = ''
+let selectedMode = 'brief'
+
+// Mode selector functionality
+const modeButtons = document.querySelectorAll('.search-up-mode-btn')
+const modeIndicator = document.querySelector('.search-up-mode-indicator')
+
+const modeDescriptions = {
+  brief: 'Brief (1-2 sentences)',
+  detailed: 'Detailed (3-5 sentences)',
+  comprehensive: 'Comprehensive (full explanation)',
+}
+
+modeButtons.forEach((button) => {
+  button.addEventListener('click', () => {
+    const mode = button.dataset.mode
+    setMode(mode)
+  })
+})
+
+function setMode(mode) {
+  selectedMode = mode
+
+  // Update active button
+  modeButtons.forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.mode === mode)
+  })
+
+  // Update indicator
+  modeIndicator.textContent = `Mode: ${modeDescriptions[mode]}`
+}
 
 // Action button event listeners
 document.getElementById('copy-answer').addEventListener('click', () => {
@@ -79,31 +115,51 @@ function showTemporaryFeedback(message) {
 }
 
 searchUpInput.addEventListener('keydown', async (e) => {
+  // Handle mode shortcuts first
+  if (e.key === '1' && e.ctrlKey) {
+    e.preventDefault()
+    setMode('brief')
+    return
+  }
+  if (e.key === '2' && e.ctrlKey) {
+    e.preventDefault()
+    setMode('detailed')
+    return
+  }
+  if (e.key === '3' && e.ctrlKey) {
+    e.preventDefault()
+    setMode('comprehensive')
+    return
+  }
+
   if (e.key === 'Enter') {
     const query = e.target.value.trim()
     if (query) {
       currentQuery = query
       searchUpAnswer.innerText = 'Thinking...'
       hideActions()
-      console.log('Sending query to background:', query) // Debug log
+      console.log('Sending query to background:', query, 'Mode:', selectedMode)
 
       try {
-        chrome.runtime.sendMessage({ query }, (response) => {
-          console.log('Received response:', response) // Debug log
-          if (chrome.runtime.lastError) {
-            console.error('Runtime error:', chrome.runtime.lastError)
-            searchUpAnswer.innerText = 'Error: Could not get response.'
-          } else {
-            currentAnswer = response || 'No response received.'
-            searchUpAnswer.innerText = currentAnswer
-            // Clear the input and focus for follow-up queries
-            searchUpInput.value = ''
-            searchUpInput.focus()
-            if (currentAnswer && !currentAnswer.startsWith('Error:')) {
-              showActions()
+        chrome.runtime.sendMessage(
+          { query, mode: selectedMode },
+          (response) => {
+            console.log('Received response:', response)
+            if (chrome.runtime.lastError) {
+              console.error('Runtime error:', chrome.runtime.lastError)
+              searchUpAnswer.innerText = 'Error: Could not get response.'
+            } else {
+              currentAnswer = response || 'No response received.'
+              searchUpAnswer.innerText = currentAnswer
+              // Clear the input and focus for follow-up queries
+              searchUpInput.value = ''
+              searchUpInput.focus()
+              if (currentAnswer && !currentAnswer.startsWith('Error:')) {
+                showActions()
+              }
             }
           }
-        })
+        )
       } catch (error) {
         console.error('Search Up error:', error)
         searchUpAnswer.innerText = 'Error: Could not get response.'
@@ -244,6 +300,7 @@ function summarizePage() {
     {
       query: pageContent,
       isPageSummary: true,
+      mode: 'detailed', // Always use detailed mode for summaries
     },
     (response) => {
       if (response) {

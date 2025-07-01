@@ -1,9 +1,9 @@
 // Replace with your actual Vercel deployment URL
 const BACKEND_URL = 'https://searchup.vercel.app/api/search'
 
-async function callBackendAPI(query, isPageSummary = false) {
+async function callBackendAPI(query, isPageSummary = false, mode = 'brief') {
   try {
-    console.log('Calling backend API with query:', query)
+    console.log('Calling backend API with query:', query, 'mode:', mode)
 
     const response = await fetch(BACKEND_URL, {
       method: 'POST',
@@ -13,6 +13,7 @@ async function callBackendAPI(query, isPageSummary = false) {
       body: JSON.stringify({
         query: query.trim(),
         isPageSummary: isPageSummary,
+        mode: mode,
       }),
     })
 
@@ -94,7 +95,7 @@ chrome.commands.onCommand.addListener((command) => {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.query) {
-    callBackendAPI(message.query, message.isPageSummary)
+    callBackendAPI(message.query, message.isPageSummary, message.mode)
       .then((answer) => {
         sendResponse(answer)
       })

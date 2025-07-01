@@ -15,7 +15,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { query, isPageSummary } = req.body
+    const { query, isPageSummary, mode = 'brief' } = req.body
 
     // Validate input
     if (!query || typeof query !== 'string' || query.trim().length === 0) {
@@ -36,6 +36,10 @@ export default async function handler(req, res) {
         .json({ error: `Query too long (max ${maxLength} characters)` })
     }
 
+    // Validate mode
+    const validModes = ['brief', 'detailed', 'comprehensive']
+    const selectedMode = validModes.includes(mode) ? mode : 'brief'
+
     // Get API key from environment variables
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY
 
@@ -48,9 +52,25 @@ export default async function handler(req, res) {
 
     let promptText
     if (isPageSummary) {
-      promptText = `Please provide a concise summary (3-4 sentences) of the following webpage content. Focus on the main points and key information:\n\n${query.trim()}`
+      const summaryPrompts = {
+        brief:
+          'Please provide a very concise summary (2-3 sentences) of the following webpage content, focusing only on the main point:',
+        detailed:
+          'Please provide a concise summary (3-5 sentences) of the following webpage content, covering the main points and key information:',
+        comprehensive:
+          'Please provide a detailed summary (6-8 sentences) of the following webpage content, including main points, key details, and important context:',
+      }
+      promptText = `${summaryPrompts[selectedMode]}\n\n${query.trim()}`
     } else {
-      promptText = `Please provide a concise answer (2-3 sentences max) to this question: ${query.trim()}`
+      const answerPrompts = {
+        brief:
+          'Please provide a very concise answer (1-2 sentences maximum) to this question:',
+        detailed:
+          'Please provide a detailed answer (3-5 sentences) to this question, including key points and context:',
+        comprehensive:
+          'Please provide a comprehensive answer to this question, including detailed explanation, examples, and relevant context:',
+      }
+      promptText = `${answerPrompts[selectedMode]} ${query.trim()}`
     }
 
     const requestBody = {

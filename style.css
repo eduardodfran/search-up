@@ -15,6 +15,44 @@
   max-width: 500px;
 }
 
+#search-up-mode-selector {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+  justify-content: center;
+}
+
+.search-up-mode-btn {
+  background-color: #333;
+  border: 1px solid #555;
+  color: #ccc;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  transition: all 0.2s;
+  flex: 1;
+  text-align: center;
+}
+
+.search-up-mode-btn:hover {
+  background-color: #444;
+  color: white;
+}
+
+.search-up-mode-btn.active {
+  background-color: #007acc;
+  border-color: #007acc;
+  color: white;
+}
+
+.search-up-mode-indicator {
+  font-size: 10px;
+  color: #999;
+  text-align: center;
+  margin-bottom: 4px;
+}
+
 #search-up-input {
   width: 100%;
   border: 1px solid #555;
