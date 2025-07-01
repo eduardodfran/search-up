@@ -1,0 +1,36 @@
+{
+  "manifest_version": 2,
+  "name": "Search Up",
+  "version": "0.1",
+  "description": "A floating search bar to get quick AI answers.",
+  "permissions": [
+    "scripting",
+    "activeTab",
+    "<all_urls>",
+    "https://generativelanguage.googleapis.com/*"
+  ],
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": false
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["style.css"]
+    }
+  ],
+  "commands": {
+    "toggle_search": {
+      "suggested_key": {
+        "default": "Alt+S"
+      },
+      "description": "Toggle the search bar"
+    }
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "search-up@example.com"
+    }
+  }
+}
