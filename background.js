@@ -1,5 +1,5 @@
 // Replace with your actual Vercel deployment URL
-const BACKEND_URL = 'https://your-app-name.vercel.app/api/search'
+const BACKEND_URL = 'https://searchup.vercel.app/api/search'
 
 async function callBackendAPI(query) {
   try {
@@ -16,9 +16,11 @@ async function callBackendAPI(query) {
     console.log('Backend response status:', response.status)
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+      const errorData = await response
+        .json()
+        .catch(() => ({ error: 'Unknown error' }))
       console.error('Backend error:', errorData)
-      
+
       if (response.status === 400) {
         return 'Invalid query. Please try a different question.'
       } else if (response.status === 429) {
@@ -36,7 +38,7 @@ async function callBackendAPI(query) {
     if (data.answer) {
       return data.answer
     } else {
-      return 'Sorry, I couldn\'t generate an answer for that question.'
+      return "Sorry, I couldn't generate an answer for that question."
     }
   } catch (error) {
     console.error('Network error:', error)
@@ -45,6 +47,7 @@ async function callBackendAPI(query) {
 }
 
 chrome.commands.onCommand.addListener((command) => {
+  console.log('Command received:', command)
   if (command === 'toggle_search') {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs[0]) {
@@ -57,6 +60,8 @@ chrome.commands.onCommand.addListener((command) => {
                 'Error sending message to tab:',
                 chrome.runtime.lastError
               )
+            } else {
+              console.log('Toggle message sent successfully')
             }
           }
         )
@@ -75,31 +80,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         console.error('API call failed:', error)
         sendResponse('Sorry, there was an error processing your request.')
       })
+    return true // Keep the message channel open for async response
   }
-  return true
-})
-              console.error(
-                'Error sending message to tab:',
-                chrome.runtime.lastError
-              )
-            }
-          }
-        )
-      }
-    })
-  }
-})
-
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.query) {
-    // Call the real Gemini API
-    callGeminiAPI(message.query)
-      .then((answer) => {
-        sendResponse(answer)
-      })
-      .catch((error) => {
-        sendResponse('Sorry, there was an error processing your request.')
-      })
-  }
-  return true // Indicates that the response is sent asynchronously
 })
