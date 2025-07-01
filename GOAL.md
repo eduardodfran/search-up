@@ -73,3 +73,19 @@ Features:
 - Visual indicator showing current mode
 - Different prompts sent to AI based on selected mode
 - Page summaries automatically use detailed mode
+
+✅4. Voice Input (Speech-to-Text)
+
+🎙 Let users press mic and speak the query
+
+    Uses webkitSpeechRecognition in Chrome
+
+Features:
+
+- Microphone button in search bar
+- Click to start/stop voice recording
+- Visual feedback during recording (red dot)
+- Auto-submit recognized speech
+- Error handling for various speech recognition issues
+- Graceful fallback when speech recognition is not supported
+- Stops listening when user starts typing

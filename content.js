@@ -7,7 +7,10 @@ searchUpBar.innerHTML = `
     <button class="search-up-mode-btn" data-mode="comprehensive">Full</button>
   </div>
   <div class="search-up-mode-indicator">Mode: Brief (1-2 sentences)</div>
-  <input type="text" id="search-up-input" placeholder="Search...">
+  <div id="search-up-input-container">
+    <input type="text" id="search-up-input" placeholder="Search...">
+    <button id="search-up-mic-btn" title="Voice search (Click and speak)">🎙️</button>
+  </div>
   <div id="search-up-answer"></div>
   <div id="search-up-actions">
     <button class="search-up-action-btn" id="copy-answer">📋 Copy</button>
@@ -21,6 +24,109 @@ document.body.appendChild(searchUpBar)
 const searchUpInput = document.getElementById('search-up-input')
 const searchUpAnswer = document.getElementById('search-up-answer')
 const searchUpActions = document.getElementById('search-up-actions')
+const micButton = document.getElementById('search-up-mic-btn')
+
+let currentAnswer = ''
+let currentQuery = ''
+let selectedMode = 'brief'
+let recognition = null
+let isListening = false
+
+// Initialize speech recognition
+function initSpeechRecognition() {
+  if (
+    !('webkitSpeechRecognition' in window) &&
+    !('SpeechRecognition' in window)
+  ) {
+    micButton.style.display = 'none'
+    return
+  }
+
+  const SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition
+  recognition = new SpeechRecognition()
+
+  recognition.continuous = false
+  recognition.interimResults = false
+  recognition.lang = 'en-US'
+
+  recognition.onstart = () => {
+    isListening = true
+    micButton.textContent = '🔴'
+    micButton.title = 'Listening... Click to stop'
+    searchUpInput.placeholder = 'Listening...'
+  }
+
+  recognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript
+    searchUpInput.value = transcript
+    searchUpInput.focus()
+
+    // Auto-submit if we got a result
+    if (transcript.trim()) {
+      setTimeout(() => {
+        const enterEvent = new KeyboardEvent('keydown', {
+          key: 'Enter',
+          code: 'Enter',
+          keyCode: 13,
+          which: 13,
+          bubbles: true,
+        })
+        searchUpInput.dispatchEvent(enterEvent)
+      }, 500)
+    }
+  }
+
+  recognition.onerror = (event) => {
+    console.log('Speech recognition error:', event.error)
+    resetMicButton()
+
+    let errorMessage = 'Voice input error'
+    switch (event.error) {
+      case 'no-speech':
+        errorMessage = 'No speech detected'
+        break
+      case 'network':
+        errorMessage = 'Network error'
+        break
+      case 'not-allowed':
+        errorMessage = 'Microphone access denied'
+        break
+    }
+
+    showTemporaryFeedback(errorMessage, micButton)
+  }
+
+  recognition.onend = () => {
+    resetMicButton()
+  }
+}
+
+function resetMicButton() {
+  isListening = false
+  micButton.textContent = '🎙️'
+  micButton.title = 'Voice search (Click and speak)'
+  searchUpInput.placeholder = 'Search...'
+}
+
+function toggleVoiceInput() {
+  if (!recognition) {
+    showTemporaryFeedback('Voice input not supported', micButton)
+    return
+  }
+
+  if (isListening) {
+    recognition.stop()
+  } else {
+    recognition.start()
+  }
+}
+
+// Initialize speech recognition when content loads
+initSpeechRecognition()
+
+// Add mic button event listener
+micButton.addEventListener('click', toggleVoiceInput)
 
 let currentAnswer = ''
 let currentQuery = ''
@@ -106,15 +212,21 @@ function hideActions() {
   searchUpActions.classList.remove('show')
 }
 
-function showTemporaryFeedback(message) {
-  const originalText = document.getElementById('copy-answer').textContent
-  document.getElementById('copy-answer').textContent = message
+function showTemporaryFeedback(message, targetElement = null) {
+  const element = targetElement || document.getElementById('copy-answer')
+  const originalText = element.textContent
+  element.textContent = message
   setTimeout(() => {
-    document.getElementById('copy-answer').textContent = originalText
+    element.textContent = originalText
   }, 1500)
 }
 
 searchUpInput.addEventListener('keydown', async (e) => {
+  // Stop voice input if user starts typing
+  if (isListening && e.key !== 'Enter') {
+    recognition.stop()
+  }
+
   // Handle mode shortcuts first
   if (e.key === '1' && e.ctrlKey) {
     e.preventDefault()
