@@ -293,19 +293,18 @@ document.addEventListener('keydown', (e) => {
 })
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log('Content script received message:', message) // Debug log
+  console.log('Content script received message:', message)
+
   if (message.action === 'toggle_search_bar') {
-    if (
-      searchUpBar.style.display === 'none' ||
-      searchUpBar.style.display === ''
-    ) {
+    const isCurrentlyVisible = searchUpBar.style.display === 'block'
+
+    if (!isCurrentlyVisible) {
       searchUpBar.style.display = 'block'
-      // Increase delay and ensure proper focus
       setTimeout(() => {
         searchUpInput.focus()
-        searchUpInput.select() // Select any existing text
-      }, 50)
-      console.log('Search bar shown') // Debug log
+        searchUpInput.select()
+      }, 100)
+      console.log('Search bar shown')
     } else {
       searchUpBar.style.display = 'none'
       searchUpInput.value = ''
@@ -313,13 +312,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       hideActions()
       currentAnswer = ''
       currentQuery = ''
-      console.log('Search bar hidden') // Debug log
+      console.log('Search bar hidden')
     }
-    sendResponse({ success: true }) // Respond to background script
-  } else if (message.action === 'summarize_page') {
+
+    sendResponse({ success: true, visible: !isCurrentlyVisible })
+    return true
+  }
+
+  if (message.action === 'summarize_page') {
     summarizePage()
     sendResponse({ success: true })
+    return true
   }
+
   return true
 })
 

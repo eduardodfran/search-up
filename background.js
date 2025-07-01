@@ -52,45 +52,38 @@ async function callBackendAPI(query, isPageSummary = false, mode = 'brief') {
 
 chrome.commands.onCommand.addListener((command) => {
   console.log('Command received:', command)
-  if (command === 'toggle_search') {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs[0]) {
+  
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (tabs[0] && tabs[0].id) {
+      if (command === 'toggle_search') {
         chrome.tabs.sendMessage(
           tabs[0].id,
           { action: 'toggle_search_bar' },
           (response) => {
             if (chrome.runtime.lastError) {
-              console.error(
-                'Error sending message to tab:',
-                chrome.runtime.lastError
-              )
+              console.error('Error sending toggle message:', chrome.runtime.lastError.message)
             } else {
-              console.log('Toggle message sent successfully')
+              console.log('Toggle message sent successfully', response)
             }
           }
         )
-      }
-    })
-  } else if (command === 'summarize_page') {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs[0]) {
+      } else if (command === 'summarize_page') {
         chrome.tabs.sendMessage(
           tabs[0].id,
           { action: 'summarize_page' },
           (response) => {
             if (chrome.runtime.lastError) {
-              console.error(
-                'Error sending message to tab:',
-                chrome.runtime.lastError
-              )
+              console.error('Error sending summarize message:', chrome.runtime.lastError.message)
             } else {
-              console.log('Summarize message sent successfully')
+              console.log('Summarize message sent successfully', response)
             }
           }
         )
       }
-    })
-  }
+    } else {
+      console.error('No active tab found')
+    }
+  })
 })
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -99,6 +92,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .then((answer) => {
         sendResponse(answer)
       })
+      .catch((error) => {
+        console.error('API call failed:', error)
+        sendResponse('Sorry, there was an error processing your request.')
+      })
+    return true // Keep the message channel open for async response
+  }
+})
       .catch((error) => {
         console.error('API call failed:', error)
         sendResponse('Sorry, there was an error processing your request.')

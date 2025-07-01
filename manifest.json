@@ -18,13 +18,15 @@
   "commands": {
     "toggle_search": {
       "suggested_key": {
-        "default": "Alt+S"
+        "default": "Ctrl+Shift+S",
+        "mac": "Command+Shift+S"
       },
       "description": "Toggle the search bar"
     },
     "summarize_page": {
       "suggested_key": {
-        "default": "Alt+Shift+S"
+        "default": "Ctrl+Shift+U",
+        "mac": "Command+Shift+U"
       },
       "description": "Summarize current page"
     }
