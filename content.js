@@ -148,8 +148,148 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       console.log('Search bar hidden') // Debug log
     }
     sendResponse({ success: true }) // Respond to background script
+  } else if (message.action === 'summarize_page') {
+    summarizePage()
+    sendResponse({ success: true })
   }
   return true
 })
 
 searchUpBar.style.display = 'none'
+
+let searchBarVisible = false
+let searchBarElement = null
+
+function toggleSearchBar() {
+  if (searchBarVisible) {
+    hideSearchBar()
+  } else {
+    showSearchBar()
+  }
+}
+
+function showSearchBar() {
+  if (searchBarElement) {
+    searchBarElement.style.display = 'block'
+    searchBarElement.querySelector('input').focus()
+    searchBarVisible = true
+    return
+  }
+
+  // Create search bar element
+  searchBarElement = createSearchBarElement()
+  document.body.appendChild(searchBarElement)
+  searchBarElement.querySelector('input').focus()
+  searchBarVisible = true
+}
+
+function hideSearchBar() {
+  if (searchBarElement) {
+    searchBarElement.style.display = 'none'
+    searchBarVisible = false
+  }
+}
+
+function createSearchBarElement() {
+  const container = document.createElement('div')
+  container.className = 'search-up-container'
+  container.innerHTML = `
+    <div class="search-up-bar">
+      <input type="text" placeholder="Ask anything..." class="search-up-input">
+      <div class="search-up-result"></div>
+    </div>
+  `
+
+  const input = container.querySelector('.search-up-input')
+  const result = container.querySelector('.search-up-result')
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && input.value.trim()) {
+      handleSearch(input.value.trim(), result)
+    } else if (e.key === 'Escape') {
+      hideSearchBar()
+    }
+  })
+
+  return container
+}
+
+function handleSearch(query, resultElement) {
+  resultElement.textContent = 'Thinking...'
+  resultElement.style.display = 'block'
+
+  chrome.runtime.sendMessage({ query }, (response) => {
+    if (response) {
+      resultElement.textContent = response
+    } else {
+      resultElement.textContent = 'Sorry, no response received.'
+    }
+  })
+}
+
+function summarizePage() {
+  // Extract page content
+  const pageContent = extractPageContent()
+
+  if (!pageContent || pageContent.length < 100) {
+    showSummaryResult('Not enough content on this page to summarize.')
+    return
+  }
+
+  // Show loading state
+  showSummaryResult('Summarizing page...', true)
+
+  // Send to background script for API call
+  chrome.runtime.sendMessage(
+    {
+      query: pageContent,
+      isPageSummary: true,
+    },
+    (response) => {
+      if (response) {
+        showSummaryResult(response)
+      } else {
+        showSummaryResult('Sorry, could not generate a summary.')
+      }
+    }
+  )
+}
+
+function extractPageContent() {
+  // Get main content, excluding navigation, ads, etc.
+  const content = document.body.innerText
+  // Limit content length for API
+  return content.substring(0, 8000)
+}
+
+function showSummaryResult(text, isLoading = false) {
+  // Create or update summary display
+  let summaryElement = document.querySelector('.search-up-summary')
+
+  if (!summaryElement) {
+    summaryElement = document.createElement('div')
+    summaryElement.className = 'search-up-summary'
+    document.body.appendChild(summaryElement)
+  }
+
+  summaryElement.innerHTML = `
+    <div class="search-up-summary-content">
+      <div class="search-up-summary-header">
+        <span>Page Summary</span>
+        <button class="search-up-close" onclick="this.parentElement.parentElement.parentElement.remove()">×</button>
+      </div>
+      <div class="search-up-summary-text">${text}</div>
+    </div>
+  `
+
+  summaryElement.style.display = 'block'
+
+  // Auto-hide after 10 seconds if not loading
+  if (!isLoading) {
+    setTimeout(() => {
+      if (summaryElement) {
+        summaryElement.remove()
+      }
+    }, 10000)
+  }
+}

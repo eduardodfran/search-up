@@ -15,7 +15,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { query } = req.body
+    const { query, isPageSummary } = req.body
 
     // Validate input
     if (!query || typeof query !== 'string' || query.trim().length === 0) {
@@ -28,11 +28,12 @@ export default async function handler(req, res) {
     const clientIP =
       req.headers['x-forwarded-for'] || req.connection.remoteAddress
 
-    // Limit query length
-    if (query.length > 500) {
+    // Limit query length (increase for page summaries)
+    const maxLength = isPageSummary ? 10000 : 500
+    if (query.length > maxLength) {
       return res
         .status(400)
-        .json({ error: 'Query too long (max 500 characters)' })
+        .json({ error: `Query too long (max ${maxLength} characters)` })
     }
 
     // Get API key from environment variables
@@ -45,12 +46,19 @@ export default async function handler(req, res) {
 
     const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`
 
+    let promptText
+    if (isPageSummary) {
+      promptText = `Please provide a concise summary (3-4 sentences) of the following webpage content. Focus on the main points and key information:\n\n${query.trim()}`
+    } else {
+      promptText = `Please provide a concise answer (2-3 sentences max) to this question: ${query.trim()}`
+    }
+
     const requestBody = {
       contents: [
         {
           parts: [
             {
-              text: `Please provide a concise answer (2-3 sentences max) to this question: ${query.trim()}`,
+              text: promptText,
             },
           ],
         },

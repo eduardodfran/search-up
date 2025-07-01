@@ -1,7 +1,7 @@
 // Replace with your actual Vercel deployment URL
 const BACKEND_URL = 'https://searchup.vercel.app/api/search'
 
-async function callBackendAPI(query) {
+async function callBackendAPI(query, isPageSummary = false) {
   try {
     console.log('Calling backend API with query:', query)
 
@@ -10,7 +10,10 @@ async function callBackendAPI(query) {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ query: query.trim() }),
+      body: JSON.stringify({
+        query: query.trim(),
+        isPageSummary: isPageSummary,
+      }),
     })
 
     console.log('Backend response status:', response.status)
@@ -67,12 +70,31 @@ chrome.commands.onCommand.addListener((command) => {
         )
       }
     })
+  } else if (command === 'summarize_page') {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0]) {
+        chrome.tabs.sendMessage(
+          tabs[0].id,
+          { action: 'summarize_page' },
+          (response) => {
+            if (chrome.runtime.lastError) {
+              console.error(
+                'Error sending message to tab:',
+                chrome.runtime.lastError
+              )
+            } else {
+              console.log('Summarize message sent successfully')
+            }
+          }
+        )
+      }
+    })
   }
 })
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.query) {
-    callBackendAPI(message.query)
+    callBackendAPI(message.query, message.isPageSummary)
       .then((answer) => {
         sendResponse(answer)
       })
