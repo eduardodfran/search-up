@@ -50,59 +50,53 @@ async function callBackendAPI(query, isPageSummary = false, mode = 'brief') {
   }
 }
 
-chrome.commands.onCommand.addListener((command) => {
+chrome.commands.onCommand.addListener(async (command) => {
   console.log('Command received:', command)
-  
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (tabs[0] && tabs[0].id) {
-      if (command === 'toggle_search') {
-        chrome.tabs.sendMessage(
-          tabs[0].id,
-          { action: 'toggle_search_bar' },
-          (response) => {
-            if (chrome.runtime.lastError) {
-              console.error('Error sending toggle message:', chrome.runtime.lastError.message)
-            } else {
-              console.log('Toggle message sent successfully', response)
-            }
-          }
-        )
-      } else if (command === 'summarize_page') {
-        chrome.tabs.sendMessage(
-          tabs[0].id,
-          { action: 'summarize_page' },
-          (response) => {
-            if (chrome.runtime.lastError) {
-              console.error('Error sending summarize message:', chrome.runtime.lastError.message)
-            } else {
-              console.log('Summarize message sent successfully', response)
-            }
-          }
-        )
-      }
-    } else {
+
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+
+    if (!tab || !tab.id) {
       console.error('No active tab found')
+      return
     }
-  })
+
+    if (command === 'toggle_search') {
+      const response = await chrome.tabs.sendMessage(tab.id, {
+        action: 'toggle_search_bar',
+      })
+      console.log('Toggle message sent successfully', response)
+    } else if (command === 'summarize_page') {
+      const response = await chrome.tabs.sendMessage(tab.id, {
+        action: 'summarize_page',
+      })
+      console.log('Summarize message sent successfully', response)
+    }
+  } catch (error) {
+    console.error('Error sending command message:', error)
+  }
 })
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  console.log('Background received message:', message)
+
   if (message.query) {
-    callBackendAPI(message.query, message.isPageSummary, message.mode)
-      .then((answer) => {
+    // Handle async response properly
+    ;(async () => {
+      try {
+        const answer = await callBackendAPI(
+          message.query,
+          message.isPageSummary,
+          message.mode
+        )
+        console.log('Sending response back:', answer)
         sendResponse(answer)
-      })
-      .catch((error) => {
+      } catch (error) {
         console.error('API call failed:', error)
         sendResponse('Sorry, there was an error processing your request.')
-      })
-    return true // Keep the message channel open for async response
-  }
-})
-      .catch((error) => {
-        console.error('API call failed:', error)
-        sendResponse('Sorry, there was an error processing your request.')
-      })
+      }
+    })()
+
     return true // Keep the message channel open for async response
   }
 })

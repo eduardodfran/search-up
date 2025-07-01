@@ -19,6 +19,151 @@ searchUpBar.innerHTML = `
     <button class="search-up-action-btn" id="explain-more">🧠 Explain More</button>
   </div>
 `
+
+// Add CSS styles
+const style = document.createElement('style')
+style.textContent = `
+  #search-up-bar {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    border: 2px solid #4285f4;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+    z-index: 10000;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    width: 500px;
+    max-width: 90vw;
+  }
+  
+  #search-up-mode-selector {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  
+  .search-up-mode-btn {
+    padding: 6px 12px;
+    border: 1px solid #ddd;
+    background: white;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  
+  .search-up-mode-btn.active {
+    background: #4285f4;
+    color: white;
+    border-color: #4285f4;
+  }
+  
+  .search-up-mode-indicator {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 12px;
+  }
+  
+  #search-up-input-container {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  
+  #search-up-input {
+    flex: 1;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+    outline: none;
+  }
+  
+  #search-up-input:focus {
+    border-color: #4285f4;
+  }
+  
+  #search-up-mic-btn {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    background: white;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+  }
+  
+  #search-up-answer {
+    background: #f8f9fa;
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    min-height: 20px;
+    white-space: pre-wrap;
+    line-height: 1.5;
+  }
+  
+  #search-up-actions {
+    display: none;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  
+  #search-up-actions.show {
+    display: flex;
+  }
+  
+  .search-up-action-btn {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    background: white;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  
+  .search-up-action-btn:hover {
+    background: #f0f0f0;
+  }
+  
+  .search-up-summary {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: white;
+    border: 2px solid #4285f4;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+    z-index: 10000;
+    max-width: 400px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  
+  .search-up-summary-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    font-weight: bold;
+  }
+  
+  .search-up-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+  }
+  
+  .search-up-summary-text {
+    line-height: 1.5;
+  }
+`
+document.head.appendChild(style)
 document.body.appendChild(searchUpBar)
 
 const searchUpInput = document.getElementById('search-up-input')
@@ -127,10 +272,6 @@ initSpeechRecognition()
 
 // Add mic button event listener
 micButton.addEventListener('click', toggleVoiceInput)
-
-let currentAnswer = ''
-let currentQuery = ''
-let selectedMode = 'brief'
 
 // Mode selector functionality
 const modeButtons = document.querySelectorAll('.search-up-mode-btn')
@@ -253,28 +394,35 @@ searchUpInput.addEventListener('keydown', async (e) => {
       console.log('Sending query to background:', query, 'Mode:', selectedMode)
 
       try {
-        chrome.runtime.sendMessage(
-          { query, mode: selectedMode },
-          (response) => {
-            console.log('Received response:', response)
-            if (chrome.runtime.lastError) {
-              console.error('Runtime error:', chrome.runtime.lastError)
-              searchUpAnswer.innerText = 'Error: Could not get response.'
-            } else {
-              currentAnswer = response || 'No response received.'
-              searchUpAnswer.innerText = currentAnswer
-              // Clear the input and focus for follow-up queries
-              searchUpInput.value = ''
-              searchUpInput.focus()
-              if (currentAnswer && !currentAnswer.startsWith('Error:')) {
-                showActions()
+        const response = await new Promise((resolve, reject) => {
+          chrome.runtime.sendMessage(
+            { query, mode: selectedMode },
+            (response) => {
+              if (chrome.runtime.lastError) {
+                console.error('Runtime error:', chrome.runtime.lastError)
+                reject(chrome.runtime.lastError)
+              } else {
+                resolve(response)
               }
             }
-          }
-        )
+          )
+        })
+
+        console.log('Received response:', response)
+        currentAnswer = response || 'No response received.'
+        searchUpAnswer.innerText = currentAnswer
+
+        // Clear the input and focus for follow-up queries
+        searchUpInput.value = ''
+        searchUpInput.focus()
+
+        if (currentAnswer && !currentAnswer.startsWith('Error:')) {
+          showActions()
+        }
       } catch (error) {
         console.error('Search Up error:', error)
-        searchUpAnswer.innerText = 'Error: Could not get response.'
+        searchUpAnswer.innerText =
+          'Error: Could not connect to search service. Please check your internet connection.'
       }
     }
   }
@@ -415,12 +563,15 @@ function summarizePage() {
   // Send to background script for API call
   chrome.runtime.sendMessage(
     {
-      query: pageContent,
+      query: `Please provide a concise summary of this webpage content: ${pageContent}`,
       isPageSummary: true,
       mode: 'detailed', // Always use detailed mode for summaries
     },
     (response) => {
-      if (response) {
+      if (chrome.runtime.lastError) {
+        console.error('Runtime error:', chrome.runtime.lastError)
+        showSummaryResult('Error: Could not generate summary.')
+      } else if (response) {
         showSummaryResult(response)
       } else {
         showSummaryResult('Sorry, could not generate a summary.')
