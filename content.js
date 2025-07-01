@@ -276,11 +276,17 @@ function showSummaryResult(text, isLoading = false) {
     <div class="search-up-summary-content">
       <div class="search-up-summary-header">
         <span>Page Summary</span>
-        <button class="search-up-close" onclick="this.parentElement.parentElement.parentElement.remove()">×</button>
+        <button class="search-up-close">×</button>
       </div>
       <div class="search-up-summary-text">${text}</div>
     </div>
   `
+
+  // Add event listener for close button
+  const closeButton = summaryElement.querySelector('.search-up-close')
+  closeButton.addEventListener('click', () => {
+    summaryElement.remove()
+  })
 
   summaryElement.style.display = 'block'
 

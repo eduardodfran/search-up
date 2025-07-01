@@ -79,3 +79,60 @@
 .search-up-action-btn:active {
   background-color: #333;
 }
+
+.search-up-summary {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 10000;
+  background-color: rgba(20, 20, 20, 0.95);
+  border: 1px solid #444;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px);
+  max-width: 400px;
+  min-width: 300px;
+}
+
+.search-up-summary-content {
+  padding: 15px;
+  color: white;
+}
+
+.search-up-summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.search-up-close {
+  background: none;
+  border: none;
+  color: #ccc;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.search-up-close:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.search-up-summary-text {
+  font-size: 14px;
+  line-height: 1.4;
+  max-height: 300px;
+  overflow-y: auto;
+  word-wrap: break-word;
+}
