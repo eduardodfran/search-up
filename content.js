@@ -96,6 +96,9 @@ searchUpInput.addEventListener('keydown', async (e) => {
           } else {
             currentAnswer = response || 'No response received.'
             searchUpAnswer.innerText = currentAnswer
+            // Clear the input and focus for follow-up queries
+            searchUpInput.value = ''
+            searchUpInput.focus()
             if (currentAnswer && !currentAnswer.startsWith('Error:')) {
               showActions()
             }
