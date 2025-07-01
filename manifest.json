@@ -4,10 +4,9 @@
   "version": "0.1",
   "description": "A floating search bar to get quick AI answers.",
   "permissions": [
-    "scripting",
     "activeTab",
     "<all_urls>",
-    "https://generativelanguage.googleapis.com/*"
+    "https://searchup.vercel.app/*"
   ],
   "background": {
     "scripts": ["background.js"],
