@@ -174,8 +174,94 @@ const micButton = document.getElementById('search-up-mic-btn')
 let currentAnswer = ''
 let currentQuery = ''
 let selectedMode = 'brief'
+let currentSiteInfo = null
 let recognition = null
 let isListening = false
+let debounceTimer
+
+// Site detection functionality
+function detectCurrentSite() {
+  const url = window.location.href
+  const hostname = window.location.hostname
+  const title = document.title
+  const metaDescription =
+    document.querySelector('meta[name="description"]')?.content || ''
+
+  // Extract main content for context (limited)
+  const mainContent = extractSiteContent()
+
+  return {
+    url,
+    hostname,
+    title,
+    description: metaDescription,
+    content: mainContent.substring(0, 2000), // Limit content for context
+    type: detectSiteType(hostname, url),
+  }
+}
+
+function detectSiteType(hostname, url) {
+  const patterns = {
+    'Social Media': [
+      'twitter.com',
+      'facebook.com',
+      'instagram.com',
+      'linkedin.com',
+      'reddit.com',
+    ],
+    News: ['cnn.com', 'bbc.com', 'nytimes.com', 'reuters.com', 'npr.org'],
+    Shopping: ['amazon.com', 'ebay.com', 'etsy.com', 'shopify.com'],
+    Video: ['youtube.com', 'vimeo.com', 'twitch.tv'],
+    Documentation: ['docs.', 'wiki', 'github.com'],
+    Blog: ['/blog/', 'medium.com', 'wordpress.com', 'blogger.com'],
+  }
+
+  for (const [type, domains] of Object.entries(patterns)) {
+    if (
+      domains.some(
+        (domain) => hostname.includes(domain) || url.includes(domain)
+      )
+    ) {
+      return type
+    }
+  }
+
+  return 'Website'
+}
+
+function extractSiteContent() {
+  // Try to get main content area
+  const mainSelectors = [
+    'main',
+    'article',
+    '[role="main"]',
+    '.content',
+    '.main-content',
+    '#content',
+    '#main',
+  ]
+
+  for (const selector of mainSelectors) {
+    const element = document.querySelector(selector)
+    if (element) {
+      return element.innerText.trim()
+    }
+  }
+
+  // Fallback to body content, excluding common navigation/footer elements
+  const excludeSelectors =
+    'nav, header, footer, .navigation, .sidebar, .ads, .advertisement'
+  const content = Array.from(document.body.children)
+    .filter((el) => !el.matches(excludeSelectors))
+    .map((el) => el.innerText)
+    .join(' ')
+    .trim()
+
+  return content
+}
+
+// Initialize site info on load
+currentSiteInfo = detectCurrentSite()
 
 // Initialize speech recognition
 function initSpeechRecognition() {
@@ -394,35 +480,31 @@ searchUpInput.addEventListener('keydown', async (e) => {
       console.log('Sending query to background:', query, 'Mode:', selectedMode)
 
       try {
-        const response = await new Promise((resolve, reject) => {
-          chrome.runtime.sendMessage(
-            { query, mode: selectedMode },
-            (response) => {
-              if (chrome.runtime.lastError) {
-                console.error('Runtime error:', chrome.runtime.lastError)
-                reject(chrome.runtime.lastError)
-              } else {
-                resolve(response)
-              }
-            }
-          )
-        })
-
-        console.log('Received response:', response)
-        currentAnswer = response || 'No response received.'
-        searchUpAnswer.innerText = currentAnswer
-
-        // Clear the input and focus for follow-up queries
-        searchUpInput.value = ''
-        searchUpInput.focus()
-
-        if (currentAnswer && !currentAnswer.startsWith('Error:')) {
-          showActions()
+        const messageData = {
+          query,
+          mode: selectedMode,
+          siteInfo: currentSiteInfo, // Always send site info for context
         }
+
+        chrome.runtime.sendMessage(messageData, (response) => {
+          console.log('Received response:', response)
+          if (chrome.runtime.lastError) {
+            console.error('Runtime error:', chrome.runtime.lastError)
+            searchUpAnswer.innerText = 'Error: Could not get response.'
+          } else {
+            currentAnswer = response || 'No response received.'
+            searchUpAnswer.innerText = currentAnswer
+            // Clear the input and focus for follow-up queries
+            searchUpInput.value = ''
+            searchUpInput.focus()
+            if (currentAnswer && !currentAnswer.startsWith('Error:')) {
+              showActions()
+            }
+          }
+        })
       } catch (error) {
         console.error('Search Up error:', error)
-        searchUpAnswer.innerText =
-          'Error: Could not connect to search service. Please check your internet connection.'
+        searchUpAnswer.innerText = 'Error: Could not get response.'
       }
     }
   }
@@ -554,7 +636,6 @@ function showSummaryResult(text, isLoading = false) {
     }, 10000)
   }
 }
-
 
 function extractPageContent() {
   // Get main content, excluding navigation, ads, etc.
