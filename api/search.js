@@ -15,7 +15,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { query, isPageSummary, mode = 'brief' } = req.body
+    const { query, isPageSummary, mode = 'brief', siteInfo } = req.body
 
     // Validate input
     if (!query || typeof query !== 'string' || query.trim().length === 0) {
@@ -37,7 +37,7 @@ export default async function handler(req, res) {
     }
 
     // Validate mode
-    const validModes = ['brief', 'detailed', 'comprehensive']
+    const validModes = ['brief', 'detailed', 'comprehensive', 'site']
     const selectedMode = validModes.includes(mode) ? mode : 'brief'
 
     // Get API key from environment variables
@@ -61,6 +61,25 @@ export default async function handler(req, res) {
           'Please provide a detailed summary (6-8 sentences) of the following webpage content, including main points, key details, and important context:',
       }
       promptText = `${summaryPrompts[selectedMode]}\n\n${query.trim()}`
+    } else if (selectedMode === 'site' && siteInfo) {
+      // Handle automatic page context queries
+      const siteContext = `
+Current Webpage Context:
+- URL: ${siteInfo.url}
+- Page Title: ${siteInfo.title}
+- Website Type: ${siteInfo.type}
+- Page Description: ${siteInfo.description}
+${
+  siteInfo.content && siteInfo.content.trim()
+    ? `- Page Content: ${siteInfo.content.substring(0, 1500)}...`
+    : ''
+}
+
+User Query: "${query.trim()}""
+
+Based on the current webpage context above, please answer the user's question. The user is asking about something while viewing this specific page, so please provide a relevant answer that takes into account what they're currently looking at. If the question seems general but could relate to the current page content, please include relevant information from the page context.`
+
+      promptText = siteContext
     } else {
       const answerPrompts = {
         brief:

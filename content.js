@@ -334,10 +334,12 @@ function performSearch() {
     console.log('Sending query to background:', query, 'Mode:', selectedMode)
 
     try {
+      // Always include current page context automatically
       const messageData = {
         query,
         mode: selectedMode,
         siteInfo: currentSiteInfo, // Always send site info for context
+        hasPageContext: true, // Flag to indicate we're always including context
       }
 
       chrome.runtime.sendMessage(messageData, (response) => {

@@ -103,10 +103,13 @@ chrome.commands.onCommand.addListener((command) => {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.query) {
+    // Always use site mode when hasPageContext is true
+    const effectiveMode = message.hasPageContext ? 'site' : message.mode
+
     callBackendAPI(
       message.query,
       message.isPageSummary,
-      message.mode,
+      effectiveMode,
       message.siteInfo
     )
       .then((answer) => {
