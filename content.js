@@ -1,43 +1,46 @@
-const searchUpBar = document.createElement('div')
-searchUpBar.id = 'search-up-bar'
-searchUpBar.innerHTML = `
-  <div class="search-up-header">
-    <div class="search-up-dots">
-      <div class="search-up-dots-row">
-        <div class="search-up-dot"></div>
-        <div class="search-up-dot"></div>
-        <div class="search-up-dot"></div>
+// Prevent multiple bars
+if (!document.getElementById('search-up-bar')) {
+  const searchUpBar = document.createElement('div')
+  searchUpBar.id = 'search-up-bar'
+  searchUpBar.innerHTML = `
+    <div class="search-up-header">
+      <div class="search-up-dots">
+        <div class="search-up-dots-row">
+          <div class="search-up-dot"></div>
+          <div class="search-up-dot"></div>
+          <div class="search-up-dot"></div>
+        </div>
+        <div class="search-up-dots-row">
+          <div class="search-up-dot"></div>
+          <div class="search-up-dot"></div>
+        </div>
       </div>
-      <div class="search-up-dots-row">
-        <div class="search-up-dot"></div>
-        <div class="search-up-dot"></div>
-      </div>
+      <div class="search-up-title">SearchUP</div>
+      <button class="search-up-close-btn" title="Close">×</button>
     </div>
-    <div class="search-up-title">SearchUP</div>
-    <button class="search-up-close-btn" title="Close">×</button>
-  </div>
-  <div id="search-up-mode-selector">
-    <button class="search-up-mode-btn active" data-mode="brief">Brief</button>
-    <button class="search-up-mode-btn" data-mode="detailed">Detailed</button>
-    <button class="search-up-mode-btn" data-mode="comprehensive">Full</button>
-  </div>
-  <div class="search-up-mode-indicator">Mode: Brief (1-2 sentences)</div>
-  <div id="search-up-input-container">
-    <input type="text" id="search-up-input" placeholder="Search...">
-    <button id="search-up-mic-btn" title="Voice search (Click and speak)">🎙️</button>
-    <button id="search-up-search-btn" title="Search">🔍</button>
-  </div>
-  <div id="search-up-answer"></div>
-  <div id="search-up-actions">
-    <button class="search-up-action-btn" id="copy-answer">📋 Copy</button>
-    <button class="search-up-action-btn" id="share-answer">📧 Share</button>
-    <button class="search-up-action-btn" id="open-tab">🔗 Open</button>
-    <button class="search-up-action-btn" id="explain-more">🧠 Explain More</button>
-  </div>
-`
-
-// Remove the inline CSS styles to use the external style.css file
-document.body.appendChild(searchUpBar)
+    <div id="search-up-mode-selector">
+      <button class="search-up-mode-btn active" data-mode="brief">Brief</button>
+      <button class="search-up-mode-btn" data-mode="detailed">Detailed</button>
+      <button class="search-up-mode-btn" data-mode="comprehensive">Full</button>
+    </div>
+    <div class="search-up-mode-indicator">Mode: Brief (1-2 sentences)</div>
+    <div id="search-up-input-container">
+      <input type="text" id="search-up-input" placeholder="Search...">
+      <button id="search-up-mic-btn" title="Voice search (Click and speak)">🎙️</button>
+      <button id="search-up-search-btn" title="Search">🔍</button>
+    </div>
+    <div id="search-up-answer"></div>
+    <div id="search-up-actions">
+      <button class="search-up-action-btn" id="copy-answer">📋 Copy</button>
+      <button class="search-up-action-btn" id="share-answer">📧 Share</button>
+      <button class="search-up-action-btn" id="open-tab">🔗 Open</button>
+      <button class="search-up-action-btn" id="explain-more">🧠 Explain More</button>
+    </div>
+  `
+  document.body.appendChild(searchUpBar)
+}
+// Use the already existing bar
+const searchUpBar = document.getElementById('search-up-bar')
 
 const searchUpInput = document.getElementById('search-up-input')
 const searchUpAnswer = document.getElementById('search-up-answer')
@@ -412,30 +415,45 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('Content script received message:', message)
 
   if (message.action === 'toggle_search_bar') {
+    console.log('Toggle search bar action received')
+    console.log('Current display style:', searchUpBar.style.display)
+
+    // Check if search bar is currently visible
     const isCurrentlyVisible = searchUpBar.style.display === 'block'
+    console.log('Is currently visible:', isCurrentlyVisible)
 
     if (!isCurrentlyVisible) {
+      // Show the search bar
       searchUpBar.style.display = 'block'
+      console.log('Showing search bar')
+
+      // Focus the input with a small delay to ensure visibility
       setTimeout(() => {
-        searchUpInput.focus()
-        searchUpInput.select()
+        if (searchUpInput) {
+          searchUpInput.focus()
+          searchUpInput.select()
+          console.log('Input focused')
+        }
       }, 100)
-      console.log('Search bar shown')
     } else {
+      // Hide the search bar
       searchUpBar.style.display = 'none'
       searchUpInput.value = ''
       searchUpAnswer.innerText = ''
       hideActions()
       currentAnswer = ''
       currentQuery = ''
-      console.log('Search bar hidden')
+      console.log('Search bar hidden and reset')
     }
 
-    sendResponse({ success: true, visible: !isCurrentlyVisible })
+    const newVisibleState = !isCurrentlyVisible
+    console.log('New visible state:', newVisibleState)
+    sendResponse({ success: true, visible: newVisibleState })
     return true
   }
 
   if (message.action === 'summarize_page') {
+    console.log('Summarize page action received')
     summarizePage()
     sendResponse({ success: true })
     return true
@@ -445,6 +463,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 })
 
 searchUpBar.style.display = 'none'
+console.log('Search bar initialized as hidden')
 
 function summarizePage() {
   // Extract page content

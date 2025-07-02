@@ -35,16 +35,16 @@ document.addEventListener('DOMContentLoaded', function () {
     .addEventListener('click', function () {
       if (confirm('Reset all settings to default?')) {
         chrome.storage.local.clear(function () {
-          // Reset shortcuts to default
-          const defaultShortcuts = {
-            toggle_search: 'Alt+S',
-            summarize_page: 'Alt+Shift+S',
-          }
-
-          chrome.storage.sync.set(defaultShortcuts, function () {
-            loadCurrentShortcuts()
-            alert('Settings reset successfully!')
-          })
+          // Clear shortcuts completely instead of setting defaults
+          chrome.storage.sync.remove(
+            ['toggle_search', 'summarize_page'],
+            function () {
+              loadCurrentShortcuts()
+              alert(
+                'Settings reset successfully! Configure new shortcuts by double-clicking them.'
+              )
+            }
+          )
         })
       }
     })
@@ -59,14 +59,15 @@ document.addEventListener('DOMContentLoaded', function () {
 let isRecording = false
 let currentRecordingElement = null
 let recordingCommand = null
+let recordingTimeout = null
 
 // Load and display current shortcuts
 function loadCurrentShortcuts() {
   chrome.storage.sync.get(
     ['toggle_search', 'summarize_page'],
     function (result) {
-      const toggleShortcut = result.toggle_search || 'Alt+S'
-      const summarizeShortcut = result.summarize_page || 'Alt+Shift+S'
+      const toggleShortcut = result.toggle_search || 'Not configured'
+      const summarizeShortcut = result.summarize_page || 'Not configured'
 
       document.getElementById('toggle-shortcut').textContent = toggleShortcut
       document.getElementById('summarize-shortcut').textContent =
@@ -105,8 +106,13 @@ function startRecording(element, command) {
   element.textContent = 'Recording...'
   document.getElementById('recording-indicator').classList.add('show')
 
+  // Clear any existing timeout
+  if (recordingTimeout) {
+    clearTimeout(recordingTimeout)
+  }
+
   // Auto-stop recording after 10 seconds
-  setTimeout(() => {
+  recordingTimeout = setTimeout(() => {
     if (isRecording) {
       stopRecording(true)
     }
@@ -117,6 +123,12 @@ function stopRecording(cancelled = false) {
   if (!isRecording) return
 
   isRecording = false
+
+  // Clear timeout
+  if (recordingTimeout) {
+    clearTimeout(recordingTimeout)
+    recordingTimeout = null
+  }
 
   if (currentRecordingElement) {
     currentRecordingElement.classList.remove('recording')
@@ -183,7 +195,7 @@ function handleKeyRecord(event) {
   if (!event.ctrlKey && !event.altKey && !event.shiftKey && !event.metaKey) {
     currentRecordingElement.textContent = 'Need modifier key!'
     setTimeout(() => {
-      if (currentRecordingElement) {
+      if (currentRecordingElement && isRecording) {
         currentRecordingElement.textContent = 'Recording...'
       }
     }, 1000)
@@ -193,20 +205,74 @@ function handleKeyRecord(event) {
   const shortcut = parts.join('+')
   currentRecordingElement.textContent = shortcut
 
-  // Save the shortcut
-  const updateData = {}
-  updateData[recordingCommand] = shortcut
-
-  chrome.storage.sync.set(updateData, function () {
-    // Update background script
-    chrome.runtime.sendMessage({
-      action: 'updateShortcuts',
-      shortcuts: updateData,
-    })
-
-    console.log(`Shortcut saved: ${recordingCommand} = ${shortcut}`)
-  })
-
-  // Stop recording after a short delay
-  setTimeout(() => stopRecording(), 1000)
+  // Save the shortcut with proper error handling
+  saveShortcut(recordingCommand, shortcut)
 }
+
+function saveShortcut(command, shortcut) {
+  const updateData = {}
+  updateData[command] = shortcut
+
+  // Save to storage first
+  chrome.storage.sync.set(updateData, function () {
+    if (chrome.runtime.lastError) {
+      console.error('Storage error:', chrome.runtime.lastError)
+      if (currentRecordingElement) {
+        currentRecordingElement.textContent = 'Save failed!'
+        currentRecordingElement.style.color = '#ff4444'
+      }
+      setTimeout(() => stopRecording(true), 2000)
+      return
+    }
+
+    // Then update background script
+    chrome.runtime.sendMessage(
+      {
+        action: 'updateShortcuts',
+        shortcuts: updateData,
+      },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          console.error('Background update error:', chrome.runtime.lastError)
+          // Even if background update fails, the shortcut is saved
+          // Background will load it on next startup
+        }
+
+        if (currentRecordingElement) {
+          if (response && response.success) {
+            console.log(`Shortcut saved: ${command} = ${shortcut}`)
+            currentRecordingElement.style.color = '#4CAF50'
+          } else {
+            console.log(`Shortcut saved to storage: ${command} = ${shortcut}`)
+            currentRecordingElement.style.color = '#4CAF50'
+          }
+
+          // Reset color after delay
+          setTimeout(() => {
+            if (currentRecordingElement) {
+              currentRecordingElement.style.color = ''
+            }
+          }, 2000)
+        }
+
+        // Stop recording after successful save
+        setTimeout(() => stopRecording(), 1000)
+      }
+    )
+  })
+}
+
+// Enhanced cleanup on window unload
+window.addEventListener('beforeunload', () => {
+  if (isRecording) {
+    stopRecording(true)
+  }
+})
+
+// Handle visibility change (when popup loses focus)
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && isRecording) {
+    // Don't cancel, just ensure state is preserved
+    console.log('Popup hidden while recording, maintaining state')
+  }
+})

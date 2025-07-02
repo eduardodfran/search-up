@@ -59,86 +59,245 @@ async function callBackendAPI(
   }
 }
 
-// Store current shortcuts
+// Store current shortcuts - start with empty/null values
 let currentShortcuts = {
-  toggle_search: 'Alt+S',
-  summarize_page: 'Alt+Shift+S',
+  toggle_search: null,
+  summarize_page: null,
 }
 
-// Load saved shortcuts on startup
-chrome.storage.sync.get(
-  ['toggleShortcut', 'summarizeShortcut'],
-  function (result) {
-    if (result.toggleShortcut) {
-      currentShortcuts.toggle_search = result.toggleShortcut
-    }
-    if (result.summarizeShortcut) {
-      currentShortcuts.summarize_page = result.summarizeShortcut
-    }
-  }
-)
+let shortcutsLoaded = false
 
-// Listen for shortcut key combinations
-document.addEventListener('keydown', function (event) {
-  const pressedCombo = getKeyCombo(event)
-
-  if (pressedCombo === currentShortcuts.toggle_search) {
-    event.preventDefault()
-    executeCommand('toggle_search')
-  } else if (pressedCombo === currentShortcuts.summarize_page) {
-    event.preventDefault()
-    executeCommand('summarize_page')
-  }
-})
-
-// Get key combination string from event
-function getKeyCombo(event) {
-  const parts = []
-
-  if (event.ctrlKey) parts.push('Ctrl')
-  if (event.altKey) parts.push('Alt')
-  if (event.shiftKey) parts.push('Shift')
-
-  if (event.key && event.key.length === 1) {
-    parts.push(event.key.toUpperCase())
-  } else if (event.key && event.key.startsWith('F')) {
-    parts.push(event.key.toUpperCase())
-  }
-
-  return parts.join('+')
-}
-
-// Execute command function
-function executeCommand(command) {
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (tabs[0] && tabs[0].id) {
-      const action =
-        command === 'toggle_search' ? 'toggle_search_bar' : 'summarize_page'
-
-      chrome.tabs.sendMessage(tabs[0].id, { action }, (response) => {
-        if (chrome.runtime.lastError) {
-          console.error(
-            'Error sending message:',
-            chrome.runtime.lastError.message
-          )
-        } else {
-          console.log(`${action} message sent successfully`, response)
+// Enhanced shortcut loading with retry mechanism
+function loadShortcuts(retryCount = 0) {
+  chrome.storage.sync.get(
+    ['toggle_search', 'summarize_page'],
+    function (result) {
+      if (chrome.runtime.lastError) {
+        console.error('Error loading shortcuts:', chrome.runtime.lastError)
+        if (retryCount < 3) {
+          setTimeout(() => loadShortcuts(retryCount + 1), 1000)
         }
-      })
+        return
+      }
+
+      currentShortcuts.toggle_search = result.toggle_search || null
+      currentShortcuts.summarize_page = result.summarize_page || null
+      shortcutsLoaded = true
+
+      console.log('Shortcuts loaded successfully:', currentShortcuts)
+
+      // Immediately apply to all existing tabs
+      applyShortcutsToAllTabs()
+    }
+  )
+}
+
+// Apply shortcuts to all existing tabs
+function applyShortcutsToAllTabs() {
+  chrome.tabs.query({}, (tabs) => {
+    tabs.forEach((tab) => {
+      if (
+        tab.url &&
+        !tab.url.startsWith('chrome://') &&
+        !tab.url.startsWith('chrome-extension://') &&
+        !tab.url.startsWith('moz-extension://')
+      ) {
+        injectShortcuts(tab.id)
+      }
+    })
+  })
+}
+
+// Load shortcuts on startup
+loadShortcuts()
+
+// Enhanced function to inject shortcuts into a tab
+function injectShortcuts(tabId, retryCount = 0) {
+  if (!shortcutsLoaded) {
+    // Wait for shortcuts to load before injecting
+    setTimeout(() => injectShortcuts(tabId, retryCount), 500)
+    return
+  }
+
+  const hasShortcuts =
+    currentShortcuts.toggle_search || currentShortcuts.summarize_page
+  if (!hasShortcuts) return
+
+  const shortcutCode = `
+    (function() {
+      // Remove existing listener if present
+      if (window.searchUpKeyListener) {
+        document.removeEventListener('keydown', window.searchUpKeyHandler);
+        window.searchUpKeyListener = false;
+      }
+      
+      // Store shortcuts for debugging
+      window.searchUpShortcuts = {
+        toggle_search: '${currentShortcuts.toggle_search || ''}',
+        summarize_page: '${currentShortcuts.summarize_page || ''}'
+      };
+      
+      // Define the key handler function
+      window.searchUpKeyHandler = function(event) {
+        const pressedCombo = getKeyCombo(event);
+        
+        ${
+          currentShortcuts.toggle_search
+            ? `if (pressedCombo === '${currentShortcuts.toggle_search}') {
+              event.preventDefault();
+              event.stopPropagation();
+              chrome.runtime.sendMessage({
+                action: 'shortcut_pressed',
+                shortcut: pressedCombo,
+                command: 'toggle_search'
+              });
+            }`
+            : ''
+        }
+        ${
+          currentShortcuts.summarize_page
+            ? `if (pressedCombo === '${currentShortcuts.summarize_page}') {
+              event.preventDefault();
+              event.stopPropagation();
+              chrome.runtime.sendMessage({
+                action: 'shortcut_pressed',
+                shortcut: pressedCombo,
+                command: 'summarize_page'
+              });
+            }`
+            : ''
+        }
+      };
+      
+      function getKeyCombo(event) {
+        const parts = [];
+        if (event.ctrlKey) parts.push('Ctrl');
+        if (event.altKey) parts.push('Alt');
+        if (event.shiftKey) parts.push('Shift');
+        if (event.metaKey) parts.push('Meta');
+        
+        let mainKey = event.key;
+        if (mainKey.length === 1) {
+          mainKey = mainKey.toUpperCase();
+        }
+        
+        const specialKeys = {
+          ' ': 'Space',
+          'Enter': 'Enter',
+          'Tab': 'Tab',
+          'Backspace': 'Backspace',
+          'Delete': 'Delete',
+          'ArrowUp': 'Up',
+          'ArrowDown': 'Down',
+          'ArrowLeft': 'Left',
+          'ArrowRight': 'Right',
+        };
+        
+        if (specialKeys[mainKey]) {
+          mainKey = specialKeys[mainKey];
+        }
+        
+        parts.push(mainKey);
+        return parts.join('+');
+      }
+      
+      // Add the new listener
+      document.addEventListener('keydown', window.searchUpKeyHandler, true);
+      window.searchUpKeyListener = true;
+      
+      console.log('SearchUP shortcuts injected:', window.searchUpShortcuts);
+    })();
+  `
+
+  chrome.tabs.executeScript(tabId, { code: shortcutCode }, (result) => {
+    if (chrome.runtime.lastError) {
+      console.log(
+        'Could not inject shortcuts into tab:',
+        chrome.runtime.lastError.message
+      )
+
+      // Retry for certain errors
+      if (
+        retryCount < 2 &&
+        (chrome.runtime.lastError.message.includes('loading') ||
+          chrome.runtime.lastError.message.includes('frame'))
+      ) {
+        setTimeout(() => injectShortcuts(tabId, retryCount + 1), 1000)
+      }
+    } else {
+      console.log('Shortcuts successfully injected into tab:', tabId)
     }
   })
 }
 
-chrome.commands.onCommand.addListener((command) => {
-  console.log('Command received:', command)
-  executeCommand(command)
+// Enhanced tab update listener
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'complete' && shortcutsLoaded) {
+    // Small delay to ensure page is fully loaded
+    setTimeout(() => injectShortcuts(tabId), 100)
+  }
 })
 
+// Listen for tab activation to ensure shortcuts are present
+chrome.tabs.onActivated.addListener((activeInfo) => {
+  if (shortcutsLoaded) {
+    setTimeout(() => injectShortcuts(activeInfo.tabId), 100)
+  }
+})
+
+// Handle shortcut key combinations from content scripts
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  // Handle shortcut updates
+  if (message.action === 'shortcut_pressed') {
+    console.log('Shortcut pressed:', message.command || message.shortcut)
+
+    const command =
+      message.command ||
+      (message.shortcut === currentShortcuts.toggle_search
+        ? 'toggle_search'
+        : message.shortcut === currentShortcuts.summarize_page
+        ? 'summarize_page'
+        : null)
+
+    if (command) {
+      executeCommand(command)
+    }
+    sendResponse({ success: true })
+    return true
+  }
+
+  // Handle shortcut updates from popup
   if (message.action === 'updateShortcuts') {
-    currentShortcuts.toggle_search = message.shortcuts.toggle_search
-    currentShortcuts.summarize_page = message.shortcuts.summarize_page
+    // Update shortcuts immediately
+    if (message.shortcuts.toggle_search !== undefined) {
+      currentShortcuts.toggle_search = message.shortcuts.toggle_search
+    }
+    if (message.shortcuts.summarize_page !== undefined) {
+      currentShortcuts.summarize_page = message.shortcuts.summarize_page
+    }
+
+    console.log('Updated shortcuts:', currentShortcuts)
+
+    // Apply to all tabs with enhanced error handling
+    chrome.tabs.query({}, (tabs) => {
+      const injectionPromises = tabs.map((tab) => {
+        return new Promise((resolve) => {
+          if (
+            tab.url &&
+            !tab.url.startsWith('chrome://') &&
+            !tab.url.startsWith('chrome-extension://') &&
+            !tab.url.startsWith('moz-extension://')
+          ) {
+            injectShortcuts(tab.id)
+          }
+          resolve()
+        })
+      })
+
+      Promise.all(injectionPromises).then(() => {
+        console.log('Shortcuts applied to all tabs')
+      })
+    })
+
     sendResponse({ success: true })
     return true
   }
@@ -163,3 +322,88 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true // Keep the message channel open for async response
   }
 })
+
+// Execute command function
+function executeCommand(command) {
+  console.log('Executing command:', command)
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (tabs[0] && tabs[0].id) {
+      const action =
+        command === 'toggle_search' ? 'toggle_search_bar' : 'summarize_page'
+
+      console.log('Sending message to tab:', tabs[0].id, 'action:', action)
+      console.log('Tab URL:', tabs[0].url)
+
+      // Check if we can send messages to this tab
+      if (
+        tabs[0].url.startsWith('chrome://') ||
+        tabs[0].url.startsWith('chrome-extension://')
+      ) {
+        console.log('Cannot send message to chrome:// or extension pages')
+        return
+      }
+
+      // Try to send the message, if it fails, inject content script and retry
+      chrome.tabs.sendMessage(tabs[0].id, { action }, (response) => {
+        if (chrome.runtime.lastError) {
+          console.error(
+            'Error sending message:',
+            chrome.runtime.lastError.message
+          )
+          // Try to inject content script and resend
+          chrome.scripting
+            ? chrome.scripting.executeScript(
+                {
+                  target: { tabId: tabs[0].id },
+                  files: ['content.js'],
+                },
+                () => {
+                  // Wait for content script to initialize before sending the message
+                  setTimeout(() => {
+                    chrome.tabs.sendMessage(tabs[0].id, { action }, (resp2) => {
+                      if (chrome.runtime.lastError) {
+                        console.error(
+                          'Retry failed:',
+                          chrome.runtime.lastError.message
+                        )
+                      } else {
+                        console.log(
+                          'Message sent after injecting content.js',
+                          resp2
+                        )
+                      }
+                    })
+                  }, 200) // Wait 200ms before retrying
+                }
+              )
+            : chrome.tabs.executeScript(
+                tabs[0].id,
+                { file: 'content.js' },
+                () => {
+                  // Wait for content script to initialize before sending the message
+                  setTimeout(() => {
+                    chrome.tabs.sendMessage(tabs[0].id, { action }, (resp2) => {
+                      if (chrome.runtime.lastError) {
+                        console.error(
+                          'Retry failed:',
+                          chrome.runtime.lastError.message
+                        )
+                      } else {
+                        console.log(
+                          'Message sent after injecting content.js',
+                          resp2
+                        )
+                      }
+                    })
+                  }, 200) // Wait 200ms before retrying
+                }
+              )
+        } else {
+          console.log(`${action} message sent successfully`, response)
+        }
+      })
+    } else {
+      console.log('No active tab found')
+    }
+  })
+}
