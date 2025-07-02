@@ -14,42 +14,76 @@
       }
 
       .header {
-        text-align: center;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
         margin-bottom: 20px;
         border-bottom: 1px solid #444;
         padding-bottom: 15px;
+        position: relative;
       }
 
-      .logo {
+      .header-center {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
         display: flex;
+        flex-direction: column;
         align-items: center;
-        justify-content: center;
-        gap: 8px;
-        margin-bottom: 10px;
-      }
-
-      .dots {
-        display: flex;
-        gap: 3px;
-      }
-
-      .dot {
-        width: 6px;
-        height: 6px;
-        background: #ff4444;
-        border-radius: 50%;
       }
 
       .title {
         font-size: 18px;
         font-weight: bold;
         color: #fff;
+        margin-bottom: 2px;
       }
 
       .version {
         font-size: 12px;
         color: #999;
       }
+
+      .header-logo {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        background: rgba(255, 68, 68, 0.1);
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 68, 68, 0.3);
+      }
+
+        .wakin-logo-dots {
+        position: absolute;
+        left: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        }
+
+        .wakin-logo-row {
+        display: flex;
+        gap: 4px;
+        justify-content: flex-start;
+        }
+
+        .wakin-logo-row:first-child {
+        /* Top row with 3 dots */
+        }
+
+        .wakin-logo-row:last-child {
+        /* Bottom row with 2 dots, centered under the 3 dots */
+        margin-left: 6px;
+        }
+
+        .wakin-logo-dot {
+        width: 8px;
+        height: 8px;
+        background-color: #ff4444;
+        border-radius: 50%;
+        }
 
       .section {
         margin-bottom: 20px;
@@ -193,28 +227,46 @@
   </head>
   <body>
     <div class="header">
-      <div class="logo">
-        <div class="dots">
-          <div class="dot"></div>
-          <div class="dot"></div>
-          <div class="dot"></div>
-        </div>
+      <div class="header-center">
         <div class="title">SearchUP</div>
+        <div class="version">v0.1</div>
       </div>
-      <div class="version">v0.1</div>
+    <div class="wakin-logo">
+      <div class="wakin-logo-row">
+        <div class="wakin-logo-dot"></div>
+        <div class="wakin-logo-dot"></div>
+        <div class="wakin-logo-dot"></div>
+      </div>
+      <div class="wakin-logo-row">
+        <div class="wakin-logo-dot"></div>
+        <div class="wakin-logo-dot"></div>
+      </div>
+    </div>
     </div>
 
     <div class="section">
       <div class="section-title">Keyboard Shortcuts</div>
       <div class="shortcut-item">
         <span>Toggle Search Bar</span>
-        <span class="shortcut-key" id="toggle-shortcut" data-command="toggle_search">Alt+S</span>
+        <span
+          class="shortcut-key"
+          id="toggle-shortcut"
+          data-command="toggle_search"
+          >Alt+S</span
+        >
       </div>
       <div class="shortcut-item">
         <span>Summarize Page</span>
-        <span class="shortcut-key" id="summarize-shortcut" data-command="summarize_page">Alt+Shift+S</span>
+        <span
+          class="shortcut-key"
+          id="summarize-shortcut"
+          data-command="summarize_page"
+          >Alt+Shift+S</span
+        >
       </div>
-      <div class="shortcut-hint">💡 Double-click shortcuts to record new ones</div>
+      <div class="shortcut-hint">
+        💡 Double-click shortcuts to record new ones
+      </div>
       <div class="recording-indicator" id="recording-indicator">
         🔴 Recording... Press your key combination
       </div>
@@ -255,67 +307,3 @@
     <script src="popup.js"></script>
   </body>
 </html>
-          <!-- 🔴 Recording... Press your key combination
-        </div>
-      </div>
-      <div class="shortcut-setting">
-        <label for="summarizeShortcut">Summarize Page:</label>
-        <input
-          type="text"
-          id="summarizeShortcut"
-          class="shortcut-input"
-          readonly
-          placeholder="Click and press keys..."
-          title="Click and press your desired key combination"
-        />
-        <div class="recording-indicator" id="summarizeRecording">
-          🔴 Recording... Press your key combination
-        </div>
-      </div>
-      <div class="shortcut-buttons">
-        <button class="button" id="saveShortcuts">Save Shortcuts</button>
-        <button class="button secondary" id="cancelShortcuts">Cancel</button>
-      </div>
-      <div class="shortcut-help">
-        <small
-          >Click on input field and press your desired key combination<br />
-          Examples: Alt+S, Ctrl+Q, Shift+F1, Ctrl+Shift+X</small
-        >
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">Quick Actions</div>
-      <button class="button secondary" id="toggleSearch">
-        Toggle Search Bar
-      </button>
-      <button class="button secondary" id="summarizePage">
-        Summarize Current Page
-      </button>
-    </div>
-
-    <div class="section">
-      <div class="section-title">Settings</div>
-      <button class="button secondary" id="resetSettings">
-        Reset to Defaults
-      </button>
-    </div>
-
-    <div class="donation">
-      <div class="donation-text">
-        ☕ Enjoying SearchUP? Support development!
-      </div>
-      <a
-        href="https://paypal.me/eduardofran1"
-        target="_blank"
-        class="paypal-btn"
-      >
-        💝 Donate via PayPal
-      </a>
-    </div>
-
-    <div class="footer">Made with ❤️ for better web browsing</div>
-
-    <script src="popup.js"></script>
-  </body>
-</html> -->
