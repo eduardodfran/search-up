@@ -79,8 +79,8 @@
 }
 
 #search-up-search-btn:hover {
-  background-color: #007acc;
-  border-color: #007acc;
+  background-color: #ff4444;
+  border-color: #ff4444;
 }
 
 #search-up-mode-selector {
@@ -109,8 +109,8 @@
 }
 
 .search-up-mode-btn.active {
-  background-color: #007acc;
-  border-color: #007acc;
+  background-color: #ff4444;
+  border-color: #ff4444;
   color: white;
 }
 
@@ -134,7 +134,7 @@
 }
 
 #search-up-input:focus {
-  border-color: #007acc;
+  border-color: #ff4444;
   box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.3);
 }
 
@@ -233,6 +233,29 @@
 .search-up-close:hover {
   background-color: rgba(255, 255, 255, 0.1);
   color: white;
+}
+
+.search-up-close-btn {
+  position: absolute;
+  right: 0;
+  background: none;
+  border: none;
+  color: #ccc;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.search-up-close-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #ff4444;
 }
 
 .search-up-summary-text {

@@ -14,6 +14,7 @@ searchUpBar.innerHTML = `
       </div>
     </div>
     <div class="search-up-title">SearchUP</div>
+    <button class="search-up-close-btn" title="Close">×</button>
   </div>
   <div id="search-up-mode-selector">
     <button class="search-up-mode-btn active" data-mode="brief">Brief</button>
@@ -43,6 +44,7 @@ const searchUpAnswer = document.getElementById('search-up-answer')
 const searchUpActions = document.getElementById('search-up-actions')
 const micButton = document.getElementById('search-up-mic-btn')
 const searchButton = document.getElementById('search-up-search-btn')
+const closeButton = document.querySelector('.search-up-close-btn')
 
 let currentAnswer = ''
 let currentQuery = ''
@@ -565,3 +567,13 @@ function showSummaryResult(text, isLoading = false) {
     }, 10000)
   }
 }
+
+// Add close button event listener
+closeButton.addEventListener('click', () => {
+  searchUpBar.style.display = 'none'
+  searchUpInput.value = ''
+  searchUpAnswer.innerText = ''
+  hideActions()
+  currentAnswer = ''
+  currentQuery = ''
+})
