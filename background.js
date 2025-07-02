@@ -59,49 +59,90 @@ async function callBackendAPI(
   }
 }
 
-chrome.commands.onCommand.addListener((command) => {
-  console.log('Command received:', command)
+// Store current shortcuts
+let currentShortcuts = {
+  toggle_search: 'Alt+S',
+  summarize_page: 'Alt+Shift+S',
+}
 
+// Load saved shortcuts on startup
+chrome.storage.sync.get(
+  ['toggleShortcut', 'summarizeShortcut'],
+  function (result) {
+    if (result.toggleShortcut) {
+      currentShortcuts.toggle_search = result.toggleShortcut
+    }
+    if (result.summarizeShortcut) {
+      currentShortcuts.summarize_page = result.summarizeShortcut
+    }
+  }
+)
+
+// Listen for shortcut key combinations
+document.addEventListener('keydown', function (event) {
+  const pressedCombo = getKeyCombo(event)
+
+  if (pressedCombo === currentShortcuts.toggle_search) {
+    event.preventDefault()
+    executeCommand('toggle_search')
+  } else if (pressedCombo === currentShortcuts.summarize_page) {
+    event.preventDefault()
+    executeCommand('summarize_page')
+  }
+})
+
+// Get key combination string from event
+function getKeyCombo(event) {
+  const parts = []
+
+  if (event.ctrlKey) parts.push('Ctrl')
+  if (event.altKey) parts.push('Alt')
+  if (event.shiftKey) parts.push('Shift')
+
+  if (event.key && event.key.length === 1) {
+    parts.push(event.key.toUpperCase())
+  } else if (event.key && event.key.startsWith('F')) {
+    parts.push(event.key.toUpperCase())
+  }
+
+  return parts.join('+')
+}
+
+// Execute command function
+function executeCommand(command) {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     if (tabs[0] && tabs[0].id) {
-      if (command === 'toggle_search') {
-        chrome.tabs.sendMessage(
-          tabs[0].id,
-          { action: 'toggle_search_bar' },
-          (response) => {
-            if (chrome.runtime.lastError) {
-              console.error(
-                'Error sending toggle message:',
-                chrome.runtime.lastError.message
-              )
-            } else {
-              console.log('Toggle message sent successfully', response)
-            }
-          }
-        )
-      } else if (command === 'summarize_page') {
-        chrome.tabs.sendMessage(
-          tabs[0].id,
-          { action: 'summarize_page' },
-          (response) => {
-            if (chrome.runtime.lastError) {
-              console.error(
-                'Error sending summarize message:',
-                chrome.runtime.lastError.message
-              )
-            } else {
-              console.log('Summarize message sent successfully', response)
-            }
-          }
-        )
-      }
-    } else {
-      console.error('No active tab found')
+      const action =
+        command === 'toggle_search' ? 'toggle_search_bar' : 'summarize_page'
+
+      chrome.tabs.sendMessage(tabs[0].id, { action }, (response) => {
+        if (chrome.runtime.lastError) {
+          console.error(
+            'Error sending message:',
+            chrome.runtime.lastError.message
+          )
+        } else {
+          console.log(`${action} message sent successfully`, response)
+        }
+      })
     }
   })
+}
+
+chrome.commands.onCommand.addListener((command) => {
+  console.log('Command received:', command)
+  executeCommand(command)
 })
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Handle shortcut updates
+  if (message.action === 'updateShortcuts') {
+    currentShortcuts.toggle_search = message.shortcuts.toggle_search
+    currentShortcuts.summarize_page = message.shortcuts.summarize_page
+    sendResponse({ success: true })
+    return true
+  }
+
   if (message.query) {
     // Always use site mode when hasPageContext is true
     const effectiveMode = message.hasPageContext ? 'site' : message.mode

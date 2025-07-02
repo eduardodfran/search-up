@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body {
+        width: 350px;
+        padding: 20px;
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+          sans-serif;
+        background: #1a1a1a;
+        color: white;
+      }
+
+      .header {
+        text-align: center;
+        margin-bottom: 20px;
+        border-bottom: 1px solid #444;
+        padding-bottom: 15px;
+      }
+
+      .logo {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+
+      .dots {
+        display: flex;
+        gap: 3px;
+      }
+
+      .dot {
+        width: 6px;
+        height: 6px;
+        background: #ff4444;
+        border-radius: 50%;
+      }
+
+      .title {
+        font-size: 18px;
+        font-weight: bold;
+        color: #fff;
+      }
+
+      .version {
+        font-size: 12px;
+        color: #999;
+      }
+
+      .section {
+        margin-bottom: 20px;
+      }
+
+      .section-title {
+        font-size: 14px;
+        font-weight: bold;
+        margin-bottom: 10px;
+        color: #fff;
+      }
+
+      .shortcut-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid #333;
+      }
+
+      .shortcut-key {
+        background: #333;
+        padding: 6px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        color: #ff4444;
+        font-family: monospace;
+        cursor: pointer;
+        border: 2px solid transparent;
+        transition: all 0.2s;
+        user-select: none;
+        min-width: 80px;
+        text-align: center;
+      }
+
+      .shortcut-key:hover {
+        background: #444;
+        border-color: #ff4444;
+        transform: scale(1.05);
+      }
+
+      .shortcut-key.recording {
+        background: #ff4444;
+        color: white;
+        animation: pulse 1s infinite;
+        border-color: #ff4444;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.7;
+        }
+      }
+
+      .shortcut-hint {
+        font-size: 10px;
+        color: #666;
+        text-align: center;
+        margin-top: 5px;
+        font-style: italic;
+      }
+
+      .button {
+        background: #ff4444;
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        width: 100%;
+        margin-top: 10px;
+        transition: background 0.2s;
+      }
+
+      .button:hover {
+        background: #e63939;
+      }
+
+      .button.secondary {
+        background: #333;
+        color: #ccc;
+      }
+
+      .button.secondary:hover {
+        background: #444;
+      }
+
+      .donation {
+        background: #4285f4;
+        text-align: center;
+        padding: 15px;
+        border-radius: 8px;
+        margin-top: 15px;
+      }
+
+      .donation-text {
+        font-size: 13px;
+        margin-bottom: 10px;
+        color: white;
+      }
+
+      .paypal-btn {
+        background: #0070ba;
+        color: white;
+        text-decoration: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        font-size: 12px;
+        display: inline-block;
+        transition: background 0.2s;
+      }
+
+      .paypal-btn:hover {
+        background: #005ea6;
+      }
+
+      .footer {
+        text-align: center;
+        font-size: 11px;
+        color: #666;
+        margin-top: 15px;
+      }
+
+      .recording-indicator {
+        display: none;
+        font-size: 10px;
+        color: #ff4444;
+        margin-top: 5px;
+        animation: pulse 1s infinite;
+      }
+
+      .recording-indicator.show {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div class="logo">
+        <div class="dots">
+          <div class="dot"></div>
+          <div class="dot"></div>
+          <div class="dot"></div>
+        </div>
+        <div class="title">SearchUP</div>
+      </div>
+      <div class="version">v0.1</div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Keyboard Shortcuts</div>
+      <div class="shortcut-item">
+        <span>Toggle Search Bar</span>
+        <span class="shortcut-key" id="toggle-shortcut" data-command="toggle_search">Alt+S</span>
+      </div>
+      <div class="shortcut-item">
+        <span>Summarize Page</span>
+        <span class="shortcut-key" id="summarize-shortcut" data-command="summarize_page">Alt+Shift+S</span>
+      </div>
+      <div class="shortcut-hint">💡 Double-click shortcuts to record new ones</div>
+      <div class="recording-indicator" id="recording-indicator">
+        🔴 Recording... Press your key combination
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Quick Actions</div>
+      <button class="button secondary" id="toggleSearch">
+        Toggle Search Bar
+      </button>
+      <button class="button secondary" id="summarizePage">
+        Summarize Current Page
+      </button>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Settings</div>
+      <button class="button secondary" id="resetSettings">
+        Reset to Defaults
+      </button>
+    </div>
+
+    <div class="donation">
+      <div class="donation-text">
+        ☕ Enjoying SearchUP? Support development!
+      </div>
+      <a
+        href="https://paypal.me/eduardofran1"
+        target="_blank"
+        class="paypal-btn"
+      >
+        💝 Donate via PayPal
+      </a>
+    </div>
+
+    <div class="footer">Made with ❤️ for better web browsing</div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
+          <!-- 🔴 Recording... Press your key combination
+        </div>
+      </div>
+      <div class="shortcut-setting">
+        <label for="summarizeShortcut">Summarize Page:</label>
+        <input
+          type="text"
+          id="summarizeShortcut"
+          class="shortcut-input"
+          readonly
+          placeholder="Click and press keys..."
+          title="Click and press your desired key combination"
+        />
+        <div class="recording-indicator" id="summarizeRecording">
+          🔴 Recording... Press your key combination
+        </div>
+      </div>
+      <div class="shortcut-buttons">
+        <button class="button" id="saveShortcuts">Save Shortcuts</button>
+        <button class="button secondary" id="cancelShortcuts">Cancel</button>
+      </div>
+      <div class="shortcut-help">
+        <small
+          >Click on input field and press your desired key combination<br />
+          Examples: Alt+S, Ctrl+Q, Shift+F1, Ctrl+Shift+X</small
+        >
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Quick Actions</div>
+      <button class="button secondary" id="toggleSearch">
+        Toggle Search Bar
+      </button>
+      <button class="button secondary" id="summarizePage">
+        Summarize Current Page
+      </button>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Settings</div>
+      <button class="button secondary" id="resetSettings">
+        Reset to Defaults
+      </button>
+    </div>
+
+    <div class="donation">
+      <div class="donation-text">
+        ☕ Enjoying SearchUP? Support development!
+      </div>
+      <a
+        href="https://paypal.me/eduardofran1"
+        target="_blank"
+        class="paypal-btn"
+      >
+        💝 Donate via PayPal
+      </a>
+    </div>
+
+    <div class="footer">Made with ❤️ for better web browsing</div>
+
+    <script src="popup.js"></script>
+  </body>
+</html> -->
