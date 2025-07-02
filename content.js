@@ -10,6 +10,7 @@ searchUpBar.innerHTML = `
   <div id="search-up-input-container">
     <input type="text" id="search-up-input" placeholder="Search...">
     <button id="search-up-mic-btn" title="Voice search (Click and speak)">🎙️</button>
+    <button id="search-up-search-btn" title="Search">🔍</button>
   </div>
   <div id="search-up-answer"></div>
   <div id="search-up-actions">
@@ -26,8 +27,7 @@ style.textContent = `
   #search-up-bar {
     position: fixed;
     top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
+    right: 20px;
     background: white;
     border: 2px solid #4285f4;
     border-radius: 12px;
@@ -35,7 +35,7 @@ style.textContent = `
     box-shadow: 0 8px 32px rgba(0,0,0,0.15);
     z-index: 10000;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    width: 500px;
+    width: 400px;
     max-width: 90vw;
   }
   
@@ -85,13 +85,19 @@ style.textContent = `
     border-color: #4285f4;
   }
   
-  #search-up-mic-btn {
+  #search-up-mic-btn, #search-up-search-btn {
     padding: 8px 12px;
     border: 1px solid #ddd;
     background: white;
     border-radius: 8px;
     cursor: pointer;
     font-size: 16px;
+  }
+  
+  #search-up-search-btn:hover {
+    background: #4285f4;
+    color: white;
+    border-color: #4285f4;
   }
   
   #search-up-answer {
@@ -130,7 +136,7 @@ style.textContent = `
   .search-up-summary {
     position: fixed;
     top: 20px;
-    right: 20px;
+    left: 20px;
     background: white;
     border: 2px solid #4285f4;
     border-radius: 12px;
@@ -170,6 +176,7 @@ const searchUpInput = document.getElementById('search-up-input')
 const searchUpAnswer = document.getElementById('search-up-answer')
 const searchUpActions = document.getElementById('search-up-actions')
 const micButton = document.getElementById('search-up-mic-btn')
+const searchButton = document.getElementById('search-up-search-btn')
 
 let currentAnswer = ''
 let currentQuery = ''
@@ -448,6 +455,48 @@ function showTemporaryFeedback(message, targetElement = null) {
   }, 1500)
 }
 
+// Add search button event listener
+searchButton.addEventListener('click', performSearch)
+
+// Function to perform search
+function performSearch() {
+  const query = searchUpInput.value.trim()
+  if (query) {
+    currentQuery = query
+    searchUpAnswer.innerText = 'Thinking...'
+    hideActions()
+    console.log('Sending query to background:', query, 'Mode:', selectedMode)
+
+    try {
+      const messageData = {
+        query,
+        mode: selectedMode,
+        siteInfo: currentSiteInfo, // Always send site info for context
+      }
+
+      chrome.runtime.sendMessage(messageData, (response) => {
+        console.log('Received response:', response)
+        if (chrome.runtime.lastError) {
+          console.error('Runtime error:', chrome.runtime.lastError)
+          searchUpAnswer.innerText = 'Error: Could not get response.'
+        } else {
+          currentAnswer = response || 'No response received.'
+          searchUpAnswer.innerText = currentAnswer
+          // Clear the input and focus for follow-up queries
+          searchUpInput.value = ''
+          searchUpInput.focus()
+          if (currentAnswer && !currentAnswer.startsWith('Error:')) {
+            showActions()
+          }
+        }
+      })
+    } catch (error) {
+      console.error('Search Up error:', error)
+      searchUpAnswer.innerText = 'Error: Could not get response.'
+    }
+  }
+}
+
 searchUpInput.addEventListener('keydown', async (e) => {
   // Stop voice input if user starts typing
   if (isListening && e.key !== 'Enter') {
@@ -472,41 +521,8 @@ searchUpInput.addEventListener('keydown', async (e) => {
   }
 
   if (e.key === 'Enter') {
-    const query = e.target.value.trim()
-    if (query) {
-      currentQuery = query
-      searchUpAnswer.innerText = 'Thinking...'
-      hideActions()
-      console.log('Sending query to background:', query, 'Mode:', selectedMode)
-
-      try {
-        const messageData = {
-          query,
-          mode: selectedMode,
-          siteInfo: currentSiteInfo, // Always send site info for context
-        }
-
-        chrome.runtime.sendMessage(messageData, (response) => {
-          console.log('Received response:', response)
-          if (chrome.runtime.lastError) {
-            console.error('Runtime error:', chrome.runtime.lastError)
-            searchUpAnswer.innerText = 'Error: Could not get response.'
-          } else {
-            currentAnswer = response || 'No response received.'
-            searchUpAnswer.innerText = currentAnswer
-            // Clear the input and focus for follow-up queries
-            searchUpInput.value = ''
-            searchUpInput.focus()
-            if (currentAnswer && !currentAnswer.startsWith('Error:')) {
-              showActions()
-            }
-          }
-        })
-      } catch (error) {
-        console.error('Search Up error:', error)
-        searchUpAnswer.innerText = 'Error: Could not get response.'
-      }
-    }
+    e.preventDefault()
+    performSearch()
   }
 })
 

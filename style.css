@@ -71,9 +71,9 @@
 }
 
 #search-up-answer {
+  background-color: rgba(20, 20, 20, 0.9);
   margin-top: 10px;
   padding: 8px;
-  border-top: 1px solid #555;
   font-size: 14px;
   line-height: 1.4;
   max-height: 200px;
