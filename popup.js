@@ -53,6 +53,28 @@ document.addEventListener('DOMContentLoaded', function () {
   document.querySelector('.paypal-btn').addEventListener('click', function () {
     console.log('Donation link clicked - Thank you for supporting SearchUP!')
   })
+
+  // Load custom API key if present
+  chrome.storage.sync.get(['custom_gemini_api_key'], function (result) {
+    if (result.custom_gemini_api_key) {
+      document.getElementById('custom-api-key').value =
+        result.custom_gemini_api_key
+    }
+  })
+
+  // Save API key button
+  document.getElementById('saveApiKey').addEventListener('click', function () {
+    const key = document.getElementById('custom-api-key').value.trim()
+    chrome.storage.sync.set({ custom_gemini_api_key: key }, function () {
+      const status = document.getElementById('api-key-status')
+      status.textContent = key ? 'API key saved!' : 'API key cleared.'
+      status.style.display = 'block'
+      status.style.color = key ? '#4caf50' : '#ff4444'
+      setTimeout(() => {
+        status.style.display = 'none'
+      }, 2000)
+    })
+  })
 })
 
 // Global variables for recording

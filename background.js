@@ -59,6 +59,22 @@ async function callBackendAPI(
   }
 }
 
+// Store custom API key in memory for fast access
+let customGeminiApiKey = null
+
+// Load custom API key on startup and when changed
+function loadCustomApiKey() {
+  chrome.storage.sync.get(['custom_gemini_api_key'], function (result) {
+    customGeminiApiKey = result.custom_gemini_api_key || null
+  })
+}
+loadCustomApiKey()
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'sync' && changes.custom_gemini_api_key) {
+    customGeminiApiKey = changes.custom_gemini_api_key.newValue || null
+  }
+})
+
 // Store current shortcuts - start with empty/null values
 let currentShortcuts = {
   toggle_search: null,
@@ -121,25 +137,37 @@ function injectShortcuts(tabId, retryCount = 0) {
 
   const hasShortcuts =
     currentShortcuts.toggle_search || currentShortcuts.summarize_page
-  if (!hasShortcuts) return
 
   const shortcutCode = `
     (function() {
-      // Remove existing listener if present
-      if (window.searchUpKeyListener) {
-        document.removeEventListener('keydown', window.searchUpKeyHandler);
-        window.searchUpKeyListener = false;
+      // Always remove existing listener to prevent duplicates
+      if (window.searchUpKeyHandler) {
+        document.removeEventListener('keydown', window.searchUpKeyHandler, true);
+        window.searchUpKeyHandler = null;
       }
       
-      // Store shortcuts for debugging
+      // Clear the listener flag
+      window.searchUpKeyListener = false;
+      
+      // Clear previous shortcuts reference
+      window.searchUpShortcuts = null;
+      
+      ${
+        !hasShortcuts
+          ? 'console.log("No SearchUP shortcuts configured"); return;'
+          : ''
+      }
+      
+      // Store current shortcuts for debugging
       window.searchUpShortcuts = {
         toggle_search: '${currentShortcuts.toggle_search || ''}',
         summarize_page: '${currentShortcuts.summarize_page || ''}'
       };
       
-      // Define the key handler function
+      // Define the key handler function - only for current shortcuts
       window.searchUpKeyHandler = function(event) {
         const pressedCombo = getKeyCombo(event);
+        let handled = false;
         
         ${
           currentShortcuts.toggle_search
@@ -151,6 +179,7 @@ function injectShortcuts(tabId, retryCount = 0) {
                 shortcut: pressedCombo,
                 command: 'toggle_search'
               });
+              handled = true;
             }`
             : ''
         }
@@ -164,8 +193,13 @@ function injectShortcuts(tabId, retryCount = 0) {
                 shortcut: pressedCombo,
                 command: 'summarize_page'
               });
+              handled = true;
             }`
             : ''
+        }
+        
+        if (handled) {
+          console.log('SearchUP shortcut handled:', pressedCombo);
         }
       };
       
@@ -201,11 +235,12 @@ function injectShortcuts(tabId, retryCount = 0) {
         return parts.join('+');
       }
       
-      // Add the new listener
-      document.addEventListener('keydown', window.searchUpKeyHandler, true);
-      window.searchUpKeyListener = true;
-      
-      console.log('SearchUP shortcuts injected:', window.searchUpShortcuts);
+      // Add the new listener only if we have shortcuts
+      if (window.searchUpShortcuts.toggle_search || window.searchUpShortcuts.summarize_page) {
+        document.addEventListener('keydown', window.searchUpKeyHandler, true);
+        window.searchUpKeyListener = true;
+        console.log('SearchUP shortcuts activated:', window.searchUpShortcuts);
+      }
     })();
   `
 
@@ -277,24 +312,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     console.log('Updated shortcuts:', currentShortcuts)
 
-    // Apply to all tabs with enhanced error handling
+    // Force re-injection to all tabs to clear old shortcuts
     chrome.tabs.query({}, (tabs) => {
-      const injectionPromises = tabs.map((tab) => {
-        return new Promise((resolve) => {
-          if (
-            tab.url &&
-            !tab.url.startsWith('chrome://') &&
-            !tab.url.startsWith('chrome-extension://') &&
-            !tab.url.startsWith('moz-extension://')
-          ) {
-            injectShortcuts(tab.id)
-          }
-          resolve()
-        })
-      })
-
-      Promise.all(injectionPromises).then(() => {
-        console.log('Shortcuts applied to all tabs')
+      tabs.forEach((tab) => {
+        if (
+          tab.url &&
+          !tab.url.startsWith('chrome://') &&
+          !tab.url.startsWith('chrome-extension://') &&
+          !tab.url.startsWith('moz-extension://')
+        ) {
+          // Force re-injection with a small delay to ensure proper cleanup
+          setTimeout(() => injectShortcuts(tab.id), 50)
+        }
       })
     })
 
@@ -306,11 +335,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // Always use site mode when hasPageContext is true
     const effectiveMode = message.hasPageContext ? 'site' : message.mode
 
-    callBackendAPI(
+    // Pass custom API key if present
+    const apiKeyToUse = customGeminiApiKey || undefined
+
+    callBackendAPIWithApiKey(
       message.query,
       message.isPageSummary,
       effectiveMode,
-      message.siteInfo
+      message.siteInfo,
+      apiKeyToUse
     )
       .then((answer) => {
         sendResponse(answer)
@@ -406,4 +439,52 @@ function executeCommand(command) {
       console.log('No active tab found')
     }
   })
+}
+
+// Wrapper to allow passing custom API key
+async function callBackendAPIWithApiKey(
+  query,
+  isPageSummary = false,
+  mode = 'brief',
+  siteInfo = null,
+  customApiKey = undefined
+) {
+  try {
+    const body = {
+      query: query.trim(),
+      isPageSummary: isPageSummary,
+      mode: mode,
+      siteInfo: siteInfo,
+    }
+    if (customApiKey) {
+      body.customApiKey = customApiKey
+    }
+    const response = await fetch(BACKEND_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    })
+
+    if (!response.ok) {
+      const errorData = await response
+        .json()
+        .catch(() => ({ error: 'Unknown error' }))
+      console.error('Backend error:', errorData)
+      return (
+        errorData.error ||
+        `Server error (${response.status}): Please try again later.`
+      )
+    }
+    const data = await response.json()
+    if (data.answer) {
+      return data.answer
+    } else {
+      return "Sorry, I couldn't generate an answer for that question."
+    }
+  } catch (error) {
+    console.error('Network error:', error)
+    return 'Network error: Please check your internet connection and try again.'
+  }
 }

@@ -15,7 +15,13 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { query, isPageSummary, mode = 'brief', siteInfo } = req.body
+    const {
+      query,
+      isPageSummary,
+      mode = 'brief',
+      siteInfo,
+      customApiKey,
+    } = req.body
 
     // Validate input
     if (!query || typeof query !== 'string' || query.trim().length === 0) {
@@ -40,8 +46,8 @@ export default async function handler(req, res) {
     const validModes = ['brief', 'detailed', 'comprehensive', 'site']
     const selectedMode = validModes.includes(mode) ? mode : 'brief'
 
-    // Get API key from environment variables
-    const GEMINI_API_KEY = process.env.GEMINI_API_KEY
+    // Get API key from request or environment variables
+    const GEMINI_API_KEY = customApiKey || process.env.GEMINI_API_KEY
 
     if (!GEMINI_API_KEY) {
       console.error('GEMINI_API_KEY not configured')

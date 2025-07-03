@@ -287,6 +287,38 @@
       <button class="button secondary" id="resetSettings">
         Reset to Defaults
       </button>
+      <div style="margin-top: 15px">
+        <label for="custom-api-key" style="font-size: 12px; color: #ccc"
+          >Custom Gemini API Key</label
+        >
+        <input
+          type="text"
+          id="custom-api-key"
+          placeholder="Paste your Gemini API key..."
+          style="
+            width: 100%;
+            margin-top: 5px;
+            padding: 6px 8px;
+            border-radius: 4px;
+            border: 1px solid #444;
+            background: #222;
+            color: #fff;
+            font-size: 12px;
+          "
+        />
+        <button class="button" id="saveApiKey" style="margin-top: 8px">
+          Save API Key
+        </button>
+        <div
+          id="api-key-status"
+          style="
+            font-size: 11px;
+            color: #4caf50;
+            margin-top: 4px;
+            display: none;
+          "
+        ></div>
+      </div>
     </div>
 
     <div class="donation">
