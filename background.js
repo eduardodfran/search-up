@@ -450,6 +450,12 @@ async function callBackendAPIWithApiKey(
   customApiKey = undefined
 ) {
   try {
+    console.log(
+      'API Key being used:',
+      customApiKey ? 'Custom API Key' : 'Default Backend Key'
+    )
+    console.log('Custom API Key present:', !!customApiKey)
+
     const body = {
       query: query.trim(),
       isPageSummary: isPageSummary,
